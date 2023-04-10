@@ -496,7 +496,7 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
   }
 
   /** Draws the drawing double buffered using a buffered image. *
-   * 
+   *
    */
   protected void drawDrawingNonvolatileBuffered(Graphics2D g) {
     Rectangle vr = getVisibleRect();
@@ -828,7 +828,7 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
           h.setView(this);
           selectionHandles.add(h);
           h.addHandleListener(eventHandler);
-          repaint(h.getDrawingArea()); // Repaint directly with handle's drawing area
+          repaint(h.getDrawingArea()); //Repaint directly with handle's drawing area
         }
       }
       fireSelectionChanged(oldSelection, newSelection);
