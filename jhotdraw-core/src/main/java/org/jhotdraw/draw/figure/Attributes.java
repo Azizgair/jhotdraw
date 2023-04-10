@@ -169,13 +169,12 @@ public final class Attributes {
   }
 
   /**
-   *
-
    * Removes an attribute from the figure and calls {@code attributeChanged} on all registered
    * {@code FigureListener}s if the attribute value has changed.
    *
    * <p>For efficiency reasons, the drawing is not automatically repainted. If you want the drawing
-   * to be repainted when the attribute is changed, you can either use {@code key.remove(figure); } or
+   * to be repainted when the attribute is changed, you can either use {@code key.remove(figure); }
+   * or
    *
    * <pre>
    * figure.willChange();
@@ -185,10 +184,9 @@ public final class Attributes {
    *
    * @param key The attribute key to remove.
    * @param <T> The type of the attribute value.
-   * @return Returns the old value of the attribute that was removed, or {@code null} if the attribute
-   *         was not set before.
+   * @return Returns the old value of the attribute that was removed, or {@code null} if the
+   *     attribute was not set before.
    * @see AttributeKey#remove
-   *
    */
   public <T> void removeAttribute(AttributeKey<T> key) {
     if (hasAttribute(key)) {
@@ -208,11 +206,6 @@ public final class Attributes {
     return attributes.containsKey(key);
   }
 
-  private <T> void fireAttributeChanged(AttributeKey<T> attribute, T oldValue, T newValue) {
-    if (listener != null) {
-      listener.attributeChanged(attribute, oldValue, newValue);
-    }
-  }
 
   @FunctionalInterface
   public static interface AttributeListener {
@@ -236,4 +229,12 @@ public final class Attributes {
   public static Supplier<List<Attributes>> attrSupplier(Supplier<List<Figure>> dependent) {
     return () -> dependent.get().stream().map(f -> f.attr()).collect(toList());
   }
+
+  private <T> void fireAttributeChanged(AttributeKey<T> attribute, T oldValue, T newValue) {
+    if (listener != null) {
+      listener.attributeChanged(attribute, oldValue, newValue);
+    }
+  }
+
+  
 }
