@@ -495,113 +495,134 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
     }
   }
 
-  /** Draws the drawing double buffered using a buffered image. */
+  /** Draws the drawing double buffered using a buffered image. *
+   * 
+   */
   protected void drawDrawingNonvolatileBuffered(Graphics2D g) {
     Rectangle vr = getVisibleRect();
-    Point shift = new Point(0, 0);
-    if (bufferedArea.contains(vr)
-        || bufferedArea.width >= vr.width && bufferedArea.height >= vr.height) {
-      // The visible rect fits into the buffered area, but may be shifted; shift the buffered area.
-      shift.x = bufferedArea.x - vr.x;
-      shift.y = bufferedArea.y - vr.y;
-      if (shift.x > 0) {
-        dirtyArea.add(
-            new Rectangle(
-                bufferedArea.x - shift.x,
-                vr.y,
-                shift.x + bufferedArea.width - vr.width,
-                bufferedArea.height));
-      } else if (shift.x < 0) {
-        dirtyArea.add(
-            new Rectangle(
-                bufferedArea.x + vr.width,
-                vr.y,
-                -shift.x + bufferedArea.width - vr.width,
-                bufferedArea.height));
-      }
-      if (shift.y > 0) {
-        dirtyArea.add(
-            new Rectangle(
-                vr.x,
-                bufferedArea.y - shift.y,
-                bufferedArea.width,
-                shift.y + bufferedArea.height - vr.height));
-      } else if (shift.y < 0) {
-        dirtyArea.add(
-            new Rectangle(
-                vr.x,
-                bufferedArea.y + vr.height,
-                bufferedArea.width,
-                -shift.y + bufferedArea.height - vr.height));
-      }
-      bufferedArea.x = vr.x;
-      bufferedArea.y = vr.y;
-    } else {
-      // The buffered drawing area does not match the visible rect;
-      // resize it, and mark everything as dirty.
-      bufferedArea.setBounds(vr);
-      dirtyArea.setBounds(vr);
-      if (drawingBufferNV != null
-          && (drawingBufferNV.getWidth() != vr.width || drawingBufferNV.getHeight() != vr.height)) {
-        // The dimension of the drawing buffer does not fit into the visible rect;
-        // throw the buffer away.
-        drawingBufferNV.flush();
-        drawingBufferNV = null;
-      }
-    }
-    // Update the contents of the buffer if necessary
-    int valid =
-        (drawingBufferNV == null) ? VolatileImage.IMAGE_INCOMPATIBLE : VolatileImage.IMAGE_OK;
-    switch (valid) {
-      case VolatileImage.IMAGE_INCOMPATIBLE:
-        // old buffer doesn't work with new GraphicsConfig; (re-)create it
-        try {
-          drawingBufferNV =
-              getGraphicsConfiguration()
-                  .createCompatibleImage(vr.width, vr.height, Transparency.TRANSLUCENT);
-        } catch (OutOfMemoryError e) {
-          drawingBufferNV = null;
-        }
-        dirtyArea.setBounds(bufferedArea);
-        break;
+    Point shift = calculateShift(vr);
+    if (shouldResizeBufferedArea(vr)) {
+      resizeBufferedArea(vr);
     }
     if (drawingBufferNV == null) {
-      // There is not enough memory available for a drawing buffer;
-      // draw without buffering.
-      drawDrawing(g);
+      drawDrawingWithoutBuffering(g);
       return;
     }
     if (!dirtyArea.isEmpty()) {
-      // An area of the drawing buffer is dirty; repaint it
-      Graphics2D gBuf = drawingBufferNV.createGraphics();
-      setViewRenderingHints(gBuf);
-      // For shifting and cleaning, we need to erase everything underneath
-      gBuf.setComposite(AlphaComposite.Src);
-      // Perform shifting if needed
-      if (shift.x != 0 || shift.y != 0) {
-        gBuf.copyArea(
-            Math.max(0, -shift.x),
-            Math.max(0, -shift.y),
-            drawingBufferNV.getWidth() - Math.abs(shift.x),
-            drawingBufferNV.getHeight() - Math.abs(shift.y),
-            shift.x,
-            shift.y);
-        shift.x = shift.y = 0;
-      }
-      // Clip the dirty area
-      gBuf.translate(-bufferedArea.x, -bufferedArea.y);
-      gBuf.clip(dirtyArea);
-      // Clear the dirty area
-      gBuf.setBackground(new Color(0x0, true));
-      gBuf.clearRect(dirtyArea.x, dirtyArea.y, dirtyArea.width, dirtyArea.height);
-      gBuf.setComposite(AlphaComposite.SrcOver);
-      // Repaint the dirty area
-      drawDrawing(gBuf);
-      gBuf.dispose();
+      updateDirtyArea(g, shift);
     }
-    g.drawImage(drawingBufferNV, bufferedArea.x, bufferedArea.y, null);
-    dirtyArea.setSize(-1, -1);
+    drawBufferedImage(g);
   }
+
+  private Point calculateShift(Rectangle vr) {
+    Point shift = new Point(0, 0);
+    int drawingWidth = getDrawing().getWidth();
+    int drawingHeight = getDrawing().getHeight();
+    int visibleWidth = vr.width;
+    int visibleHeight = vr.height;
+    if (drawingWidth > visibleWidth) {
+      int maxShiftX = drawingWidth - visibleWidth;
+      int currentShiftX = getHorizontalScrollBar().getValue();
+      shift.x = Math.min(currentShiftX, maxShiftX);
+    }
+    if (drawingHeight > visibleHeight) {
+      int maxShiftY = drawingHeight - visibleHeight;
+      int currentShiftY = getVerticalScrollBar().getValue();
+      shift.y = Math.min(currentShiftY, maxShiftY);
+    }
+
+    return shift;
+  }
+  private boolean shouldResizeBufferedArea(Rectangle vr) {
+    int drawingWidth = getDrawing().getWidth();
+    int drawingHeight = getDrawing().getHeight();
+    int visibleWidth = vr.width;
+    int visibleHeight = vr.height;
+    if (drawingWidth > visibleWidth || drawingHeight > visibleHeight) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private void resizeBufferedArea(Rectangle vr) {
+    int drawingWidth = getDrawing().getWidth();
+    int drawingHeight = getDrawing().getHeight();
+    int visibleWidth = vr.width;
+    int visibleHeight = vr.height;
+    int newBufferedWidth = Math.max(drawingWidth, visibleWidth);
+    int newBufferedHeight = Math.max(drawingHeight, visibleHeight);
+
+    BufferedImage newBufferedArea = new BufferedImage(newBufferedWidth, newBufferedHeight, BufferedImage.TYPE_INT_ARGB);
+    Graphics2D g2d = newBufferedArea.createGraphics();
+    g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0.0f));
+    g2d.fillRect(0, 0, newBufferedWidth, newBufferedHeight);
+    getDrawing().paint(g2d);
+    setBufferedArea(newBufferedArea);
+    g2d.dispose();
+  }
+
+  private void drawDrawingWithoutBuffering(Graphics g) {
+    Color oldColor = g.getColor();
+    Font oldFont = g.getFont();
+    Stroke oldStroke = ((Graphics2D) g).getStroke();
+    int drawingWidth = getDrawing().getWidth();
+    int drawingHeight = getDrawing().getHeight();
+    int visibleWidth = getVisibleRect().width;
+    int visibleHeight = getVisibleRect().height;
+    différente de la zone visible
+    if (getBufferedArea() == null || getBufferedArea().getWidth() != visibleWidth || getBufferedArea().getHeight() != visibleHeight) {
+      resizeBufferedArea(getVisibleRect());
+    }
+
+    Graphics2D bufferedGraphics = (Graphics2D) getBufferedArea().getGraphics();
+    bufferedGraphics.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0.0f));
+    bufferedGraphics.fillRect(0, 0, visibleWidth, visibleHeight);
+    getDrawing().paint(bufferedGraphics);
+    g.drawImage(getBufferedArea(), 0, 0, null);
+    g.setColor(oldColor);
+    g.setFont(oldFont);
+    ((Graphics2D) g).setStroke(oldStroke);
+    bufferedGraphics.dispose();
+  }
+
+
+  private void updateDirtyArea(Rectangle dirtyRect) {
+    int bufferedWidth = getBufferedArea().getWidth();
+    int bufferedHeight = getBufferedArea().getHeight();
+    if (dirtyRect.x >= bufferedWidth || dirtyRect.y >= bufferedHeight ||
+            dirtyRect.x + dirtyRect.width < 0 || dirtyRect.y + dirtyRect.height < 0) {
+      return;
+    }
+
+    Graphics2D bufferedGraphics = (Graphics2D) getBufferedArea().getGraphics();
+    Color oldColor = bufferedGraphics.getColor();
+    Font oldFont = bufferedGraphics.getFont();
+    Stroke oldStroke = bufferedGraphics.getStroke();
+    bufferedGraphics.setClip(dirtyRect);
+    bufferedGraphics.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0.0f));
+    bufferedGraphics.fillRect(dirtyRect.x, dirtyRect.y, dirtyRect.width, dirtyRect.height);
+    getDrawing().paint(bufferedGraphics);
+    bufferedGraphics.setColor(oldColor);
+    bufferedGraphics.setFont(oldFont);
+    bufferedGraphics.setStroke(oldStroke);
+    tampon
+    bufferedGraphics.dispose();
+    repaint(dirtyRect.x, dirtyRect.y, dirtyRect.width, dirtyRect.height);
+  }
+
+  private void drawBufferedImage(Graphics g) {
+    Graphics2D bufferedGraphics = (Graphics2D) getBufferedArea().getGraphics();
+    Color oldColor = bufferedGraphics.getColor();
+    Font oldFont = bufferedGraphics.getFont();
+    Stroke oldStroke = bufferedGraphics.getStroke();
+    getDrawing().paint(bufferedGraphics);
+    bufferedGraphics.setColor(oldColor);
+    bufferedGraphics.setFont(oldFont);
+    bufferedGraphics.setStroke(oldStroke);
+    g.drawImage(getBufferedArea(), 0, 0, this);
+  }
+
 
   /**
    * Prints the drawing view. Uses high quality rendering hints for printing. Only prints the
@@ -793,35 +814,33 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
     }
   }
 
-  /** Adds a figure to the current selection. */
   @Override
-  public void addToSelection(Figure figure) {
-    if (DEBUG) {
+  public void addToSelection(Figure figure){
+    if (DEBUG){
       System.out.println("DefaultDrawingView" + ".addToSelection(" + figure + ")");
     }
     Set<Figure> oldSelection = new HashSet<>(selectedFigures);
     if (selectedFigures.add(figure)) {
       figure.addFigureListener(handleInvalidator);
       Set<Figure> newSelection = new HashSet<>(selectedFigures);
-      Rectangle invalidatedArea = null;
       if (handlesAreValid && getEditor() != null) {
         for (Handle h : figure.createHandles(detailLevel)) {
           h.setView(this);
           selectionHandles.add(h);
           h.addHandleListener(eventHandler);
-          if (invalidatedArea == null) {
-            invalidatedArea = h.getDrawingArea();
-          } else {
-            invalidatedArea.add(h.getDrawingArea());
-          }
+          repaint(h.getDrawingArea()); // Repaint directly with handle's drawing area
         }
       }
       fireSelectionChanged(oldSelection, newSelection);
-      if (invalidatedArea != null) {
-        repaint(invalidatedArea);
-      }
     }
+
+
+
+
   }
+
+
+
 
   /** Adds a collection of figures to the current selection. */
   @Override
