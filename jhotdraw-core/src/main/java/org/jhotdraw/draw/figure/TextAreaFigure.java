@@ -372,7 +372,7 @@ public class TextAreaFigure extends AbstractAttributedDecoratedFigure implements
 
   @Override
   public void setFontSize(float size) {
-    attr().set(FONT_SIZE, new Double(size));
+    attr().set(FONT_SIZE, (double) size);
   }
 
   @Override
