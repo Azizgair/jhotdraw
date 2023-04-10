@@ -509,12 +509,12 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
       return;
     }
     if (!dirtyArea.isEmpty()) {
-      updateDirtyArea(g, shift);
+      updateDirtyArea(vr);
     }
     drawBufferedImage(g);
   }
 
-  private Point calculateShift(Rectangle vr) {
+  protected Point calculateShift(Rectangle vr) {
     Point shift = new Point(0, 0);
     int drawingWidth = getDrawing().getWidth();
     int drawingHeight = getDrawing().getHeight();
@@ -533,7 +533,7 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
 
     return shift;
   }
-  private boolean shouldResizeBufferedArea(Rectangle vr) {
+  protected boolean shouldResizeBufferedArea(Rectangle vr) {
     int drawingWidth = getDrawing().getWidth();
     int drawingHeight = getDrawing().getHeight();
     int visibleWidth = vr.width;
@@ -545,7 +545,7 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
     return false;
   }
 
-  private void resizeBufferedArea(Rectangle vr) {
+  protected void resizeBufferedArea(Rectangle vr) {
     int drawingWidth = getDrawing().getWidth();
     int drawingHeight = getDrawing().getHeight();
     int visibleWidth = vr.width;
@@ -562,7 +562,7 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
     g2d.dispose();
   }
 
-  private void drawDrawingWithoutBuffering(Graphics g) {
+  protected void drawDrawingWithoutBuffering(Graphics g) {
     Color oldColor = g.getColor();
     Font oldFont = g.getFont();
     Stroke oldStroke = ((Graphics2D) g).getStroke();
@@ -570,7 +570,6 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
     int drawingHeight = getDrawing().getHeight();
     int visibleWidth = getVisibleRect().width;
     int visibleHeight = getVisibleRect().height;
-    différente de la zone visible
     if (getBufferedArea() == null || getBufferedArea().getWidth() != visibleWidth || getBufferedArea().getHeight() != visibleHeight) {
       resizeBufferedArea(getVisibleRect());
     }
@@ -587,7 +586,7 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
   }
 
 
-  private void updateDirtyArea(Rectangle dirtyRect) {
+  protected void updateDirtyArea(Rectangle dirtyRect) {
     int bufferedWidth = getBufferedArea().getWidth();
     int bufferedHeight = getBufferedArea().getHeight();
     if (dirtyRect.x >= bufferedWidth || dirtyRect.y >= bufferedHeight ||
@@ -606,12 +605,11 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
     bufferedGraphics.setColor(oldColor);
     bufferedGraphics.setFont(oldFont);
     bufferedGraphics.setStroke(oldStroke);
-    tampon
     bufferedGraphics.dispose();
     repaint(dirtyRect.x, dirtyRect.y, dirtyRect.width, dirtyRect.height);
   }
 
-  private void drawBufferedImage(Graphics g) {
+  protected void drawBufferedImage(Graphics g) {
     Graphics2D bufferedGraphics = (Graphics2D) getBufferedArea().getGraphics();
     Color oldColor = bufferedGraphics.getColor();
     Font oldFont = bufferedGraphics.getFont();
