@@ -41,7 +41,7 @@ public final class Attributes {
 
   private AttributeListener listener;
 
-  private Supplier<List<Attributes>> DEPENDENT;
+  private Supplier<List<Attributes>> dependent;
 
   public Attributes() {
     this(null, null);
@@ -53,7 +53,7 @@ public final class Attributes {
 
   public Attributes(AttributeListener listener, Supplier<List<Attributes>> dependent) {
     this.listener = listener;
-    this.DEPENDENT = dependent == null ? () -> Collections.emptyList() : dependent;
+    this.dependent = dependent == null ? () -> Collections.emptyList() : dependent;
   }
 
   public void setAttributeEnabled(AttributeKey<?> key, boolean b) {
@@ -97,7 +97,7 @@ public final class Attributes {
    * applied to it.
    */
   public Object getAttributesRestoreData() {
-    List<Attributes> dependent = DEPENDENT.get();
+    List<Attributes> dependent = this.dependent.get();
     if (dependent.isEmpty()) {
       return getAttributes();
     } else {
@@ -116,7 +116,7 @@ public final class Attributes {
       List<Map<AttributeKey<?>, Object>> list = (List<Map<AttributeKey<?>, Object>>) restoreData;
       restoreAttributesTo(list.get(0));
       int idx = 1;
-      for (Attributes attr : DEPENDENT.get()) {
+      for (Attributes attr : dependent.get()) {
         attr.restoreAttributesTo(list.get(idx));
         idx++;
       }
@@ -150,7 +150,7 @@ public final class Attributes {
       fireAttributeChanged(key, oldValue, newValue);
     }
 
-    DEPENDENT.get().forEach(a -> a.set(key, newValue));
+    dependent.get().forEach(a -> a.set(key, newValue));
   }
 
   /**
@@ -168,6 +168,28 @@ public final class Attributes {
     return AttributeKeys.SUPPORTED_ATTRIBUTES_MAP.get(name);
   }
 
+  /**
+   *
+
+   * Removes an attribute from the figure and calls {@code attributeChanged} on all registered
+   * {@code FigureListener}s if the attribute value has changed.
+   *
+   * <p>For efficiency reasons, the drawing is not automatically repainted. If you want the drawing
+   * to be repainted when the attribute is changed, you can either use {@code key.remove(figure); } or
+   *
+   * <pre>
+   * figure.willChange();
+   * figure.remove(...);
+   * figure.changed();
+   * </pre>
+   *
+   * @param key The attribute key to remove.
+   * @param <T> The type of the attribute value.
+   * @return Returns the old value of the attribute that was removed, or {@code null} if the attribute
+   *         was not set before.
+   * @see AttributeKey#remove
+   *
+   */
   public <T> void removeAttribute(AttributeKey<T> key) {
     if (hasAttribute(key)) {
       T oldValue = get(key);
