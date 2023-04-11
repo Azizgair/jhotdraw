@@ -117,7 +117,7 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
 
   /** Draws the background of the drawing view. */
   protected void drawBackground(Graphics2D g) {
-    repaintHandles.drawBackground(g);
+    drawingView.drawBackground(g);
   }
 
   @Override
