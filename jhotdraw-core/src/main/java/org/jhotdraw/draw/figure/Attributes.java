@@ -33,7 +33,7 @@ import org.jhotdraw.draw.AttributeKeys;
 /** implementation of Attribute storage and processing. */
 public final class Attributes {
 
-  private HashMap<AttributeKey<?>, Object> attributes = new HashMap<>();
+  private HashMap<AttributeKey<?>, Object> attributesCollection = new HashMap<>();
   /**
    * Forbidden attributes can't be put by the put() operation. They can only be changed by put().
    */
@@ -89,7 +89,7 @@ public final class Attributes {
    * returned.
    */
   public Map<AttributeKey<?>, Object> getAttributes() {
-    return (Map<AttributeKey<?>, Object>) new HashMap<>(attributes);
+    return (Map<AttributeKey<?>, Object>) new HashMap<>(attributesCollection);
   }
 
   /**
@@ -121,7 +121,7 @@ public final class Attributes {
         idx++;
       }
     } else {
-      attributes.clear();
+      attributesCollection.clear();
       HashMap<AttributeKey<?>, Object> restoreDataHashMap =
           (HashMap<AttributeKey<?>, Object>) restoreData;
       setAttributes(restoreDataHashMap);
@@ -146,7 +146,7 @@ public final class Attributes {
    */
   public <T> void set(AttributeKey<T> key, T newValue) {
     if (forbiddenAttributes == null || !forbiddenAttributes.contains(key)) {
-      T oldValue = key.put(attributes, newValue);
+      T oldValue = key.put(attributesCollection, newValue);
       fireAttributeChanged(key, oldValue, newValue);
     }
 
@@ -161,7 +161,7 @@ public final class Attributes {
    *     specified key, returns key.getDefaultValue().
    */
   public <T> T get(AttributeKey<T> key) {
-    return key.get(attributes);
+    return key.get(attributesCollection);
   }
 
   public static AttributeKey<?> getAttributeKey(String name) {
@@ -191,7 +191,7 @@ public final class Attributes {
   public <T> void removeAttribute(AttributeKey<T> key) {
     if (hasAttribute(key)) {
       T oldValue = get(key);
-      attributes.remove(key);
+      attributesCollection.remove(key);
       fireAttributeChanged(key, oldValue, key.getDefaultValue());
     }
   }
@@ -203,7 +203,7 @@ public final class Attributes {
    * @return
    */
   public boolean hasAttribute(AttributeKey<?> key) {
-    return attributes.containsKey(key);
+    return attributesCollection.containsKey(key);
   }
 
 
@@ -219,7 +219,7 @@ public final class Attributes {
   public static Attributes from(
       Attributes source, AttributeListener listener, Supplier<List<Attributes>> dependent) {
     Attributes attr = new Attributes(listener, dependent);
-    attr.attributes.putAll(source.attributes);
+    attr.attributesCollection.putAll(source.attributesCollection);
     if (source.forbiddenAttributes != null) {
       attr.forbiddenAttributes = new HashSet<>(source.forbiddenAttributes);
     }
@@ -236,5 +236,5 @@ public final class Attributes {
     }
   }
 
-  
+
 }
