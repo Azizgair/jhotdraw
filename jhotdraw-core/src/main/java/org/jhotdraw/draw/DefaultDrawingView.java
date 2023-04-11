@@ -18,7 +18,6 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.undo.*;
 import org.jhotdraw.api.gui.EditableComponent;
-import org.jhotdraw.draw.AbstractDrawingView;
 import org.jhotdraw.draw.constrainer.Constrainer;
 import org.jhotdraw.draw.constrainer.GridConstrainer;
 import org.jhotdraw.draw.event.CompositeFigureEvent;
@@ -52,7 +51,7 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
   private static final boolean DEBUG = false;
 
   private Drawing drawing;
-  private AbstractDrawingView abstractDrawingView;
+  private DefaultDrawing drawingView = new DefaultDrawing();
   /**
    * Holds the selected figures in an ordered put. The ordering reflects the sequence that was used
    * to select the figures.
@@ -113,7 +112,7 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
   }
   @Override
   public void repaintHandles() {
-    abstractDrawingView.repaintHandles();
+    drawingView.repaintHandles();
   }
 
   /** Draws the background of the drawing view. */
