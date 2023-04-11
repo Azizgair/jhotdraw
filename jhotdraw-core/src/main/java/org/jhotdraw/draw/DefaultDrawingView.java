@@ -18,6 +18,7 @@ import java.util.*;
 import javax.swing.*;
 import javax.swing.undo.*;
 import org.jhotdraw.api.gui.EditableComponent;
+import org.jhotdraw.draw.AbstractDrawingView;
 import org.jhotdraw.draw.constrainer.Constrainer;
 import org.jhotdraw.draw.constrainer.GridConstrainer;
 import org.jhotdraw.draw.event.CompositeFigureEvent;
@@ -51,6 +52,7 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
   private static final boolean DEBUG = false;
 
   private Drawing drawing;
+  private AbstractDrawingView abstractDrawingView;
   /**
    * Holds the selected figures in an ordered put. The ordering reflects the sequence that was used
    * to select the figures.
@@ -109,70 +111,14 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
     }
     IS_WINDOWS = b;
   }
-
   @Override
   public void repaintHandles() {
-    validateHandles();
-    Rectangle r = null;
-    for (Handle h : getSelectionHandles()) {
-      if (r == null) {
-        r = h.getDrawingArea();
-      } else {
-        r.add(h.getDrawingArea());
-      }
-    }
-    for (Handle h : getSecondaryHandles()) {
-      if (r == null) {
-        r = h.getDrawingArea();
-      } else {
-        r.add(h.getDrawingArea());
-      }
-    }
-    if (r != null) {
-      repaint(r);
-    }
+    abstractDrawingView.repaintHandles();
   }
 
   /** Draws the background of the drawing view. */
   protected void drawBackground(Graphics2D g) {
-    if (drawing == null) {
-      // there is no drawing and thus no canvas
-      g.setColor(getBackground());
-      g.fillRect(0, 0, getWidth(), getHeight());
-    } else if (drawing.attr().get(CANVAS_WIDTH) == null
-        || drawing.attr().get(CANVAS_HEIGHT) == null) {
-      // the canvas is infinitely large
-      Color canvasColor = drawing.attr().get(CANVAS_FILL_COLOR);
-      double canvasOpacity = drawing.attr().get(CANVAS_FILL_OPACITY);
-      if (canvasColor != null) {
-        if (canvasOpacity == 1) {
-          g.setColor(new Color(canvasColor.getRGB()));
-          g.fillRect(0, 0, getWidth(), getHeight());
-        } else {
-          Point r = drawingToView(new Point2D.Double(0, 0));
-          g.setPaint(getBackgroundPaint(r.x, r.y));
-          g.fillRect(0, 0, getWidth(), getHeight());
-          g.setColor(
-              new Color(
-                  canvasColor.getRGB() & 0xfffff | ((int) (canvasOpacity * 256) << 24), true));
-          g.fillRect(0, 0, getWidth(), getHeight());
-        }
-      } else {
-        Point r = drawingToView(new Point2D.Double(0, 0));
-        g.setPaint(getBackgroundPaint(r.x, r.y));
-        g.fillRect(0, 0, getWidth(), getHeight());
-      }
-    } else {
-      // the canvas has a fixed size
-      g.setColor(getBackground());
-      g.fillRect(0, 0, getWidth(), getHeight());
-      Rectangle r =
-          drawingToView(
-              new Rectangle2D.Double(
-                  0, 0, drawing.attr().get(CANVAS_WIDTH), drawing.attr().get(CANVAS_HEIGHT)));
-      g.setPaint(getBackgroundPaint(r.x, r.y));
-      g.fillRect(r.x, r.y, r.width, r.height);
-    }
+    repaintHandles.drawBackground(g);
   }
 
   @Override
@@ -495,9 +441,7 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
     }
   }
 
-  /** Draws the drawing double buffered using a buffered image. *
-   *
-   */
+  /** Draws the drawing double buffered using a buffered image. * */
   protected void drawDrawingNonvolatileBuffered(Graphics2D g) {
     Rectangle vr = getVisibleRect();
     Point shift = calculateShift(vr);
@@ -533,6 +477,7 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
 
     return shift;
   }
+
   protected boolean shouldResizeBufferedArea(Rectangle vr) {
     int drawingWidth = getDrawing().getWidth();
     int drawingHeight = getDrawing().getHeight();
@@ -553,7 +498,8 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
     int newBufferedWidth = Math.max(drawingWidth, visibleWidth);
     int newBufferedHeight = Math.max(drawingHeight, visibleHeight);
 
-    BufferedImage newBufferedArea = new BufferedImage(newBufferedWidth, newBufferedHeight, BufferedImage.TYPE_INT_ARGB);
+    BufferedImage newBufferedArea =
+        new BufferedImage(newBufferedWidth, newBufferedHeight, BufferedImage.TYPE_INT_ARGB);
     Graphics2D g2d = newBufferedArea.createGraphics();
     g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.CLEAR, 0.0f));
     g2d.fillRect(0, 0, newBufferedWidth, newBufferedHeight);
@@ -570,7 +516,9 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
     int drawingHeight = getDrawing().getHeight();
     int visibleWidth = getVisibleRect().width;
     int visibleHeight = getVisibleRect().height;
-    if (getBufferedArea() == null || getBufferedArea().getWidth() != visibleWidth || getBufferedArea().getHeight() != visibleHeight) {
+    if (getBufferedArea() == null
+        || getBufferedArea().getWidth() != visibleWidth
+        || getBufferedArea().getHeight() != visibleHeight) {
       resizeBufferedArea(getVisibleRect());
     }
 
@@ -585,12 +533,13 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
     bufferedGraphics.dispose();
   }
 
-
   protected void updateDirtyArea(Rectangle dirtyRect) {
     int bufferedWidth = getBufferedArea().getWidth();
     int bufferedHeight = getBufferedArea().getHeight();
-    if (dirtyRect.x >= bufferedWidth || dirtyRect.y >= bufferedHeight ||
-            dirtyRect.x + dirtyRect.width < 0 || dirtyRect.y + dirtyRect.height < 0) {
+    if (dirtyRect.x >= bufferedWidth
+        || dirtyRect.y >= bufferedHeight
+        || dirtyRect.x + dirtyRect.width < 0
+        || dirtyRect.y + dirtyRect.height < 0) {
       return;
     }
 
@@ -620,7 +569,6 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
     bufferedGraphics.setStroke(oldStroke);
     g.drawImage(getBufferedArea(), 0, 0, this);
   }
-
 
   /**
    * Prints the drawing view. Uses high quality rendering hints for printing. Only prints the
@@ -813,8 +761,8 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
   }
 
   @Override
-  public void addToSelection(Figure figure){
-    if (DEBUG){
+  public void addToSelection(Figure figure) {
+    if (DEBUG) {
       System.out.println("DefaultDrawingView" + ".addToSelection(" + figure + ")");
     }
     Set<Figure> oldSelection = new HashSet<>(selectedFigures);
@@ -826,19 +774,12 @@ public class DefaultDrawingView extends JComponent implements DrawingView, Edita
           h.setView(this);
           selectionHandles.add(h);
           h.addHandleListener(eventHandler);
-          repaint(h.getDrawingArea()); //Repaint directly with handle's drawing area
+          repaint(h.getDrawingArea()); // Repaint directly with handle's drawing area
         }
       }
       fireSelectionChanged(oldSelection, newSelection);
     }
-
-
-
-
   }
-
-
-
 
   /** Adds a collection of figures to the current selection. */
   @Override
